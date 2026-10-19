@@ -30,7 +30,7 @@ jobs:
           mesa-libGL mesa-libEGL mesa-vulkan-drivers vulkan-loader libX11 libX11-xcb libxcb xcb-util-cursor
           xcb-util-image xcb-util-keysyms xcb-util-renderutil xcb-util-wm libxkbcommon libxkbcommon-x11
           libwayland-client libwayland-cursor libwayland-egl fontconfig freetype dbus-libs
-          libXrandr libXi libXcursor libXext libXrender libglvnd-glx alsa-lib pulseaudio-libs pipewire-libs
+          libXrandr libXi libXcursor libXext libXrender libglvnd-glx libglvnd-opengl alsa-lib pulseaudio-libs pipewire-libs
           systemd-libs libevdev
       - uses: actions/checkout@v5
       - name: Unit tests
