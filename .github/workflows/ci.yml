@@ -1,0 +1,98 @@
+name: CI
+
+# Checks the scripts on an ARM64 runner in Fedora 44, the base of ArmadaOS:
+# the unit tests, then a real install with ARMSX2's current Linux arm64
+# release, a stand-in disc and BIOS, and a made-up Steam library. ARMSX2
+# itself is checked to find all the libraries it needs on a Fedora desktop.
+# The launcher (launcher/) is built on the ARM64 runner too, and its window
+# opened on a virtual screen.
+
+on:
+  # Every branch: work reaches main without pull requests, once this is green.
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scripts:
+    runs-on: ubuntu-24.04-arm
+    container: registry.fedoraproject.org/fedora:44
+    timeout-minutes: 30
+    steps:
+      # What ArmadaOS has: Python, curl and a KDE desktop's libraries.
+      - name: Install Python, curl and the desktop libraries
+        run: >-
+          dnf install -y --setopt=install_weak_deps=False git python3 curl findutils procps-ng file
+          mesa-libGL mesa-libEGL mesa-vulkan-drivers vulkan-loader libX11 libX11-xcb libxcb xcb-util-cursor
+          xcb-util-image xcb-util-keysyms xcb-util-renderutil xcb-util-wm libxkbcommon libxkbcommon-x11
+          libwayland-client libwayland-cursor libwayland-egl fontconfig freetype dbus-libs
+          libXrandr libXi libXcursor libXext libXrender libglvnd-glx alsa-lib pulseaudio-libs pipewire-libs
+          systemd-libs libevdev
+      - uses: actions/checkout@v5
+      - name: Unit tests
+        run: |
+          python3 tests/add_to_steam_test.py
+          tests/install_test.sh
+      - name: Install with ARMSX2's real release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          home="$RUNNER_TEMP/home"
+          mkdir -p "$home/.local/share/Steam/userdata/1/config" "$home/discs"
+          truncate -s 200M "$home/discs/Road Trip Adventure (Europe, Australia) (En,Fr,De).iso"
+          truncate -s 4M "$home/SCPH-39004.bin"
+          HOME="$home" RT_ADD_TO_STEAM=1 scripts/install.sh \
+            "$home/discs/Road Trip Adventure (Europe, Australia) (En,Fr,De).iso" "$home/SCPH-39004.bin"
+          dir="$home/.local/share/RoadTrip-arm64"
+          tag="$(cat "$dir/armsx2/installed")"
+          echo "ARMSX2 $tag"
+          test -x "$dir/armsx2/$tag/AppRun"
+          test "$(ls "$dir/artwork"/*.png | wc -l)" = 4
+          test "$(ls "$home/.local/share/Steam/userdata/1/config/grid" | wc -l)" = 4
+          # A second run keeps everything.
+          HOME="$home" scripts/install.sh - - | tee second.log
+          grep -q "already here" second.log
+          echo "dir=$dir" >> "$GITHUB_ENV"
+          echo "tag=$tag" >> "$GITHUB_ENV"
+      - name: ARMSX2 finds its libraries
+        run: |
+          app="$dir/armsx2/$tag"
+          exe="$(find "$app/usr/bin" -maxdepth 1 -type f -name 'armsx2*' | head -1)"
+          file "$exe"
+          missing="$(LD_LIBRARY_PATH="$app/usr/lib" ldd "$exe" | grep 'not found' || true)"
+          if [ -n "$missing" ]; then
+            echo "ARMSX2 is missing libraries:"
+            echo "$missing"
+            exit 1
+          fi
+          echo "All of ARMSX2's libraries are there"
+          # The start script's emulator path is the one installed.
+          grep -F "armsx2/$tag/AppRun" "$dir/game/roadtrip.sh"
+
+  launcher:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install Rust, and a virtual screen with OpenGL for the window
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q xvfb libgl1-mesa-dri libegl1 libxkbcommon-x11-0 libxcursor1 libxrandr2 libxi6
+          command -v cargo || curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - name: Test and build the launcher
+        run: |
+          cargo test --release --locked --manifest-path launcher/Cargo.toml
+          scripts/package-launcher.sh out
+          tar -tzvf out/RoadTrip-Launcher-linux-arm64.tar.gz
+      - name: Open the launcher window
+        run: |
+          # Still open after 10 seconds (timeout ends it with 124): it started.
+          status=0
+          HOME="$RUNNER_TEMP/home" xvfb-run -a -s "-screen 0 860x640x24" \
+            timeout 10 launcher/target/release/roadtrip-launcher || status=$?
+          test "$status" = 124

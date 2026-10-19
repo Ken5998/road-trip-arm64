@@ -1,0 +1,23 @@
+road-trip-arm64
+https://github.com/Ken5998/road-trip-arm64
+
+Copyright (c) 2026 Kenan Kasumović
+
+Licensed under the MIT License (see LICENSE).
+
+This repository sets up Road Trip Adventure (PlayStation 2; Road Trip in
+North America, Choro Q HG 2 in Japan) on ARM64 Linux handhelds with ARMSX2,
+the ARM64 PlayStation 2 emulator: https://github.com/ARMSX2/ARMSX2, GPL-3.0,
+derived from PCSX2 (https://pcsx2.net). The scripts download ARMSX2's own
+Linux arm64 AppImage from its releases on the device; none of it is stored
+here, and nothing in this repository is derived from its code.
+
+The Steam artwork is downloaded at install time from libretro-thumbnails:
+https://github.com/libretro-thumbnails/Sony_-_PlayStation_2. It is not
+stored here.
+
+The launcher and the Steam scripts come from the FIFA Street ARM64 port
+(https://github.com/Ken5998/fifa-street-arm64) by the same author.
+
+No game files and no BIOS are included: the player uses their own disc image
+and the BIOS dumped from their own PlayStation 2.
