@@ -34,13 +34,15 @@ jobs:
           sha256="$(sha256sum "$archive" | cut -d' ' -f1)"
           scripts/release-notes.sh "v$version" > notes.md
           cat >> notes.md <<NOTES
-          ## Install
+          ## Setting up the emulator
 
-          The Road Trip Adventure launcher $version for ARM64 Linux handhelds, such as the Retroid Pocket 6 on ArmadaOS.
+          This is a launcher, not a port: it sets up ARMSX2, the PlayStation 2 emulator for ARM64, for Road Trip Adventure (Choro Q HG 2 works too) and adds the game to Steam.
 
-          On the device, in Desktop Mode: unpack RoadTrip-Launcher-linux-arm64.tar.gz, start RoadTrip/roadtrip-launcher, choose your own Road Trip Adventure (PlayStation 2) disc image and the BIOS dumped from your own PlayStation 2, and press Install. It downloads ARMSX2, the PlayStation 2 emulator for ARM64, from its GitHub releases, sets it up for the game and adds the game to Steam with its artwork. Update gets the newest ARMSX2 later. It needs git, Python 3 and curl on the device, as ArmadaOS has.
+          You need two things dumped from your own hardware: the game's disc image (.iso, .chd, .cso, ...) and the PlayStation 2 BIOS (a 4 MB .bin such as SCPH-39004.bin). Unpack RoadTrip-Launcher-linux-arm64.tar.gz in Desktop Mode, start RoadTrip/roadtrip-launcher, choose resolution and renderer, then **Install**. About 1 GB free is plenty.
 
-          No game files, BIOS or emulator are included. SHA-256: \`$sha256\`
+          **Update** fetches a newer ARMSX2 when there is one; **ARMSX2 settings** opens the emulator's own window for anything else.
+
+          Launcher SHA-256: \`$sha256\`. No game, BIOS or emulator in this release.
           NOTES
           if gh release view "v$version" > /dev/null 2>&1; then
             gh release upload "v$version" "$archive" --clobber
